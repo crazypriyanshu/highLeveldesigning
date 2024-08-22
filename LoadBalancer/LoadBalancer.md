@@ -1,27 +1,4 @@
-Load Balancer
-
-
-Deployments (Scalability)
-“Load Balancing” (Resilience)
-Higher Availability (Resilience)
-DDoS (Security)
-Traffic Compression (Performance)
-SSL Overhead (Performance)
-How?
-Reverse proxy
-Health checks
-Scale itself
-Algorithm
-Types?
-Application (Discussion limited to)
-DNS
-Network
-Setup?
-AWS
-Listeners
-Routing
-Target Group
-
+## Load Balancer
 
 priVerse pushes a wide variety of updates to the platform every day, be it, features or any bug fixes. 
 You are a developer at priVerse verse. 
@@ -208,8 +185,11 @@ When we create each listener rule, we specify a target group and conditions.
 When a rule condition is met, traffic is forwarded to the corresponding target group. 
 We can create different target groups for different types of requests.
 For example, create one target group for general requests and other target groups for requests to the microservices for your application.
+
 ![img_6.png](img_6.png)
 
+
+------------------------------------------------------------------------------------------------------------------------
 Further Reading and Questions
 How is the traffic across different regions regulated? On a very high level, how would the deployment in this case execute? (“Global Server Load Balancer”)
 Let’s say that a user is logged in to the account on host A. What if the next request for the same user goes to another host B? What kind of inconsistencies can arise in this case? (Session stickiness concept)
