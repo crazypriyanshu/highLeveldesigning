@@ -108,5 +108,72 @@ In practice, systems like Redis and Memcache help to fetch actual or derived kin
 
 ![img_8.png](img_8.png)
 
+### Preventing problems : Caching Invalidation Strategy
+One solution that is proposed so that cache doesn’t become stale is : **TTL (Time to Live)**
+This strategy can be used if there is no problem with the cache being invalid for a very short time, 
+so you can have a periodic refresh. Entries in the cache will be valid for only a period. 
+And after that, to again get the entries, you need to fetch them again.
+So, for example, if you cache an entry X at timestamp T with TTL of 60 seconds, 
+then for all requests asking for entry X within 60 seconds of T, you read directly from cache. 
+When you go asking for entry X at timestamp T+61, the entry X is gone and you need to fetch again.
+
+![img_9.png](img_9.png)
 
 
+### Keeping cache and DB in sync: 
+This can be done by the strategies like Write through cache, Write back cache, or Write around the cache.
+
+
+![img_10.png](img_10.png)
+
+#### Write through cache: 
+Anything to be written is database passes from cache first(there can be multiple cache machines), storing it (updating cache), and then updating it to the database and returning success. 
+If failed, changes will be reverted in the cache.
+It makes the writing slower but reads much faster. For a read-heavy system, this could be a great approach.
+
+![img_11.png](img_11.png)
+
+#### Write back cache: 
+First, write is written in the cache. 
+
+The moment write in the cache succeeds, you return success to the client. 
+Data is then synced to the database asynchronously (without blocking current ongoing request).
+The method is preferred where you don't care about the data loss immediately, like in an analytic system where exact data in the DB doesn't matter, 
+and analytical trends analysis won't be affected if we lose data or two. 
+It is inconsistent, but it will give very high throughput and very low latency.
+
+![img_12.png](img_12.png)
+
+#### Write around cache: 
+Here, the writes are done directly in the database, and the cache might be out of sync with the database. 
+Hence we can use TTL or any similar mechanism to fetch the data from the database to cache to sync with it.
+
+![img_13.png](img_13.png)
+
+
+Now let’s talk about the second question: How can you add entries if the cache is full?
+
+Well, for this, you be using an eviction strategy.
+
+### Cache eviction:
+
+![img_16.png](img_16.png)
+
+There are various eviction strategies to remove data from the cache to make space for new writes. Some of them are:
+FIFO (First In, First Out)
+
+![img_14.png](img_14.png)
+
+LRU (Least Recently Used):
+
+![img_15.png](img_15.png)
+
+
+LIFO (Last In, First Out)
+MRU (Most Recently Used)
+
+The eviction strategy must be chosen based on the data that is more likely to be accessed. The caching strategy should be designed in such a way that you have a lot of cache hits than a cache miss.
+
+
+
+![img_17.png](img_17.png)
