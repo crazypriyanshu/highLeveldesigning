@@ -570,3 +570,11 @@ redis 127.0.0.1:7002> `get hello`
 -> Redirected to slot [866] located at 172.19.0.4:6379
 "world"
 
+
+### Cache hit vs cache miss ratio:
+![img_30.png](img_30.png)
+
+![img_31.png](img_31.png)
+
+
+![img_32.png](img_32.png)
