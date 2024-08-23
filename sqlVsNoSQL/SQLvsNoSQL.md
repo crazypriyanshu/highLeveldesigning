@@ -524,11 +524,47 @@ Let X be the replication level. Then R <= X and W <= X.
 
 Because by just changing R and W it is possible to build a highly consistent or available system, it is also called tunable consistency.
 
+The value of R and W depends on the type of application we are building. 
+One of the frequent uses of DynamoDB is the Shopping Cart checkout system. Here:
+
+> The shopping cart should be as available as possible.
+
+> But if there should not be frequent cases of inconsistency and X = 5, then keeping R = 2, and W = 2 suffices. That way, you are writing to two different machines.
+
+> If anytime we receive inconsistent responses from two machines, we have to merge the responses using the timestamps attached with them.
+
+
+Example:
+**Response 1:**
+Lux Soap 10:00 PM
+Oil: 10:15 PM
+
+**Response 2:**
+Lux Soap: 10:00 PM
+Mask: 10: 20 PM
+
+**Merge**:
+Lux Soap
+Oil
+Mask
 
 
 
 
+##### Update problem in NoSql Db:
 
+![img_14.png](img_14.png)
+
+
+**So, the question is how to design the data storage structure of NoSQL databases given the variable sizes of its records?**
+
+##### Complexity of Write and Delete Operations
+Delete operations are very fast as compared to write operations.
+You may have observed this when you transfer a file vs when you delete the same file. It is because:
+
+> Delete operations do not overwrite all the bits involved. They simply remove the reference which protects the bits from getting overwritten.
+> That’s why deleted files can be recovered.
+> However, write (or overwrite) operation involves changing each of the bits involved, hence costlier.
 
 
 
