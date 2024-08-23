@@ -397,14 +397,51 @@ The cluster nodes are connected to each other using a **gossip protocol**.
 
 ![img_25.png](img_25.png)
 
-This allows the cluster to automatically detect the failure of a node and reconfigure itself to ensure that the data is still available. Hence, ever cluster node requires two open TCP ports: a Redis TCP port used to serve clients, e.g., 6379, and second port known as the cluster bus port used to communicate with other nodes, e.g., 16379.
-Sharding
-In cluster mode, Redis automatically partitions the data across multiple nodes. A way to shard the data uniformly is to use the consistent hashing algorithm. This algorithm maps a key to a node in the cluster. The hash of the key is used to determine the node. This ensures that the same key is always mapped to the same node. This is important as it ensures that the data is always available on the same node. This also ensures that the data is evenly distributed across the nodes.
-However, this algorithm has a problem. If a node is added or removed from the cluster, the data will be redistributed across the nodes. This will cause a lot of data movement and will affect the performance of the cluster. Hence, Redis does not use the consistent hashing algorithm.
-To solve the problem, Redis uses a concept called slot. A slot is a range of keys. Each node is responsible for a subset of the slots. The number of slots is fixed at 16384. This means that each node is responsible for 16384/number of nodes keys. This ensures that the data is evenly distributed across the nodes. If a node is added or removed from the cluster, the data is redistributed across the nodes. However, this redistribution is limited to the slots that the node is responsible for. This ensures that the data movement is limited and the performance of the cluster is not affected.
+This allows the cluster to automatically detect the failure of a node and reconfigure itself to ensure that the data is still available. 
+Hence, ever cluster node requires two open TCP ports: 
+1. a Redis TCP port used to serve clients, e.g., 6379, and second port known as the 
+2. cluster bus port used to communicate with other nodes, e.g., 16379.
+
+
+### Sharding
+In cluster mode, Redis automatically partitions the data across multiple nodes. A
+way to shard the data uniformly is to use the consistent hashing algorithm. 
+This algorithm maps a key to a node in the cluster. 
+The hash of the key is used to determine the node. 
+
+This ensures that the same key is always mapped to the same node. This is important as it ensures that the data is always available on the same node.
+
+
+![img_28.png](img_28.png)
+
+
+This also ensures that the data is evenly distributed across the nodes.
+However, this algorithm has a problem. If a node is added or removed from the cluster, the data will be redistributed across the nodes. 
+This will cause a lot of data movement and will affect the performance of the cluster. **Hence, Redis does not use the consistent hashing algorithm**.
+
+
+To solve the problem, Redis uses a concept called slot. **A slot is a range of keys**. Each node is responsible for a subset of the slots. 
+The number of slots is fixed at 16384. This means that each node is responsible for 16384/number of nodes keys. 
+This ensures that the data is evenly distributed across the nodes. 
+
+If a node is added or removed from the cluster, the data is redistributed across the nodes. 
+
+However, this redistribution is limited to the slots that the node is responsible for. 
+This ensures that the data movement is limited and the performance of the cluster is not affected.
 Learn more about the sharding algorithm here.
-Replication
-Since the data is partitioned across multiple nodes, it is important to ensure that the data is replicated across the nodes. This ensures that the data is available even if a node goes down. Redis uses a master-slave replication model. The master node is responsible for the data. The slave nodes are responsible for replicating the data from the master node. If the master node goes down, one of the slave nodes is promoted to be the new master node. This ensures that the data is still available.
+
+![img_27.png](img_27.png)
+
+### Replication
+Since the data is partitioned across multiple nodes, it is important to ensure that the data is replicated across the nodes. 
+This ensures that the data is available even if a node goes down. 
+Redis uses a master-slave replication model. The master node is responsible for the data. 
+The slave nodes are responsible for replicating the data from the master node. 
+If the master node goes down, one of the slave nodes is promoted to be the new master node. This ensures that the data is still available.
+
+
+![img_29.png](img_29.png)
+
 Configuration
 The cluster mode is enabled by setting the cluster-enabled configuration option to yes. The default value is no.
 To enable cluster mode, set the cluster-enabled directive to yes. Every instance also contains the path of a file where the configuration for this node is stored, which by default is nodes.conf. This file is never touched by humans; it is simply generated at startup by the Redis Cluster instances, and updated every time it is needed.
@@ -417,7 +454,9 @@ cluster-node-timeout 5000
 appendonly yes
 
 Setup
-To setup a cluster, we will use docker. We will create a docker network to connect the redis instances. This will allow the redis instances to communicate with each other.
+To setup a cluster, we will use docker. 
+We will create a docker network to connect the redis instances. 
+This will allow the redis instances to communicate with each other.
 > docker network create redis-cluster
 
 Check if the network was created.
@@ -434,14 +473,16 @@ redis redis-server /usr/local/etc/redis/redis.conf
 
 The above command will create a redis instance with the name redis-<node-number>. The configuration file is mounted to the container. The container is connected to the redis-cluster network.
 You can either create the instances manually or write a small bash script to create the instances.
-#!/usr/bin/env bash
+
+
+`#!/usr/bin/env bash
 for ind in $(seq 1 6); do
 docker run -d \
 -v redis.conf:/usr/local/etc/redis/redis.conf \
 --name redis-$ind \
 --net redis_cluster \
 redis redis-server /usr/local/etc/redis/redis.conf
-done
+done`
 
 This will create 6 redis instances and connect them to the redis-cluster network.
 Check if the instances were created.
@@ -451,12 +492,16 @@ You can use the inspect command to get the IP address of the instances.
 > docker inspect -f '{{ (index .NetworkSettings.Networks "redis_cluster").IPAddress }}' redis-1
 172.19.0.2
 
-Currently, Redis Cluster does not support NATted environments and in general environments where IP addresses or TCP ports are remapped. Along with this, to run a Redis cluster using containers, we need a script distributed by Redis
-docker run -i --rm --net redis_cluster ruby sh -c '\
-gem install redis \
+
+
+
+Currently, Redis Cluster does not support NATted environments and in general environments where IP addresses or TCP ports are remapped. A
+long with this, to run a Redis cluster using containers, we need a script distributed by Redis
+`docker run -i --rm --net redis_cluster ruby sh -c '\`
+`gem install redis \
 && wget http://download.redis.io/redis-stable/src/redis-trib.rb \
 && ruby redis-trib.rb create --replicas 1 \
-<ip-address-1>:6379 <ip-address-2>:6379 \
+<ip-address-1>:6379 <ip-address-2>:6379 \`
 ...
 
 or you can use the redis-cli command as well
@@ -466,16 +511,20 @@ or you can use the redis-cli command as well
 
 Using the replicas option, we can specify the number of replicas for each master node. In our case, we have specified 1 replica for each master node and hence, we have 3 master nodes and 3 slave nodes.
 It is just better to combine these steps in a bash script.
-#!/usr/bin/env bash
+
+
+`#!/usr/bin/env bash
 for ind in $(seq 1 6); do
 docker run -d \
 -v redis.conf:/usr/local/etc/redis/redis.conf \
 --name redis-$ind \
 --net redis_cluster \
 redis redis-server /usr/local/etc/redis/redis.conf
-done
+done`
 
-echo 'yes' | docker run -i --rm --net redis_cluster ruby sh -c '\
+
+
+`echo 'yes' | docker run -i --rm --net redis_cluster ruby sh -c '\
 gem install redis \
 && curl -O http://download.redis.io/redis-stable/src/redis-trib.rb \
 && ruby redis-trib.rb create --replicas 1 \
@@ -483,10 +532,12 @@ gem install redis \
 echo -n "$(docker inspect -f \
 '{{(index .NetworkSettings.Networks "redis_cluster").IPAddress}}' \
 "redis-$ind")"':6379 '
-done)"
+done)"`
 
 Your cluster is now ready. You can check the status of the cluster using the cluster info command.
 > docker exec -it redis-1 redis-cli -c cluster info
+
+
 
 Testing the cluster
 To connect to the cluster, use the following command to connect to the container.
@@ -507,33 +558,15 @@ You can also use the cluster slots command to get the slot to node mapping.
 > cluster slots
 
 Adding another key-value pair could result in a different node being redirected to.
-redis 127.0.0.1:7002> set hello world
+redis 127.0.0.1:7002> `set hello world`
 -> Redirected to slot [866] located at 172.19.0.4:6379
 OK
 
 Fetching the value of the key will also result in a redirection to the correct node where the key is stored.
-redis 127.0.0.1:7000> get foo
+redis 127.0.0.1:7000> `get foo`
 -> Redirected to slot [12182] located at 172.19.0.2:6379
 "bar"
-redis 127.0.0.1:7002> get hello
+redis 127.0.0.1:7002> `get hello`
 -> Redirected to slot [866] located at 172.19.0.4:6379
 "world"
 
-Code Glossary
-Description
-Link
-redis.conf
-1
-create_cluster.sh
-2
-Python client
-3
-
-References
-Eviction Policies
-How Redis eviction policies work
-Redis Cluster
-Redis Cluster Specification
-Creating a Redis Cluster using Docker
-Building Redis cluster with Docker compose
-Select a repo
