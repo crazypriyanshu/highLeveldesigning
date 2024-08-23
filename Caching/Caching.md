@@ -124,6 +124,10 @@ When you go asking for entry X at timestamp T+61, the entry X is gone and you ne
 This can be done by the strategies like Write through cache, Write back cache, or Write around the cache.
 
 
+Reading :
+https://severalnines.com/blog/hash-slot-vs-consistent-hashing-redis/
+
+
 ![img_10.png](img_10.png)
 
 #### Write through cache: 
@@ -316,7 +320,92 @@ Facebook has a lot of users, and each user has a bunch of attributes. Let’s fi
 
 ![img_22.png](img_22.png)
 
+And there are two kinds of pages a user sees on Facebook:
+Newsfeed: posts made by friends of the user.
+Profile page: it has information about a particular user and his posts.
 
+If all the related information (user info, user_friend info, and posts info) could fit on a single machine, 
+computing the newsfeed and profile page would become easy. 
+
+
+> Posts made by friends of the user.
+
+
+`SELECT * FROM User_friends a JOIN Posts b ON a.user_id = <user_id> AND b.user_id = a.friend_id AND b.timespamp < NOW - 30 days LIMIT x OFFSET y`
+
+> Posts made by the user.
+
+`SELECT * FROM Posts WHERE user_id = <user_id> LIMIT x OFFSET y`
+
+In the above query “LIMIT x OFFSET y” is done to paginate results as there could be a lot of matching entries.
+
+Here, the assumption is made that all the information fits in the single machine, but this is not the case generally. 
+Therefore, information needs to be **sharded** between the machines.
+
+-- What will be the sharding Key ??? --
+If we use user_id as sharding key, that means for a given user, all their attributes, their friend list and posts made by them become one entity and would be on one machine. 
+
+However, posts made by friends of the user will be on the machine assigned to the friend user_id [Not guaranteed to be on the same machine].
+
+If you come and ask for information to be fetched to show the profile page of user_id X, that is simple. 
+I go to the machine for X and get user_attributed, friend list and posts made by X (paginated).
+
+However, what happens when I ask for the news feed for user X. For the news feed, I need posts made by friends of X. 
+If I go to the machine for X, that is guaranteed to have the list of friends of X, but not guaranteed to have posts made by those friends, as those friends could be assigned to other machines. That could become extremely time consuming process. 
+
+#### How can we optimize newsfeed fetch?
+
+One might think that **caching** user → newsfeed is a good option. But it has the following drawbacks:
+1. More Storage required
+2. Fan out update: Have to update posts in every friend's list everytime a single post is made (1000+ writes for every single post made assuming 1000+ avg friends).
+3. Changing newsfeed algorithms becomes hard
+
+Let’s estimate what is the amount of post we generate every day. 
+Posts made by users are far less than the number of active users (80-20-1 rule). 
+Only **1% will do posts, 80% reading, and 20% will interact**.
+
+Lets do some math.
+> FB MAU - 1 Billion
+> FB DAU  - 500 million.
+> People who would write posts = 1% of 500 million = 5 million.
+> Assuming each person writes 4 posts on average (overestimating), we have roughly 20 million posts everyday.
+
+ > A post has some text, some metadata (timestamp, poster_id, etc.) and optionally images/videos. 
+ > Assuming images/videos go in a different storage, what’s the space required to store a single post?
+Metadata:
+ 
+`Poster_id  - 8 bytes
+Timestamp - 8 bytes
+Location_id - 8 bytes
+Image / video path (optional) - 24 bytes (estimated).`
+
+On text, hard to estimate the exact size.
+Twitter has limit of 140 characters on tweets. 
+Assuming FB posts are slightly longer, lets assume 250 bytes/250 characters on avg. for a post.
+
+So, total size of the post = 250 + 8 + 8 + 8 + 24  = approx 300B
+
+Total space required for posts generated in a single day = # of posts * size of post
+= 20 million * 300 bytes = **6 GB approx**.
+
+News feed is supposed to show only recent posts from a friend. 
+You don’t expect to see a year old post in your news feed. Let’s assume you only need to show posts made in the last 30 days. 
+In that case, you need 6 GB * 30 = 180GB of space to store every post generated in the last 30 days.
+
+Therefore all the recent posts can be stored in a separate database and retrieving becomes easier from the derived data. 
+We can replicate and have multiple copies (of all posts) in a lot of machines to distribute the read traffic on recent posts. 
+
+
+Fetch the friend_ids of the user.
+
+`Select recent posts made by the user’s friend: SELECT * FROM all_posts  WHERE user_id IN friend_ids LIMIT x OFFSET y`
+
+This approach uses much lesser storage and approach than the previous system.
+Here the cache is stored in a hard disk, not in RAM, but still, this is much faster than getting data from an actual storage system.
+
+We can also delete the older posts from HDD: 
+`DELETE * FROM all_posts WHERE timestamp < NOW - 30 days`
+This will help in better storage management
 
 
 
